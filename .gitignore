@@ -15,3 +15,6 @@ bin/
 .idea/
 .vscode/
 *.iml
+
+# Appsettings result
+appsettings*.local.json

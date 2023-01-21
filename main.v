@@ -4,7 +4,7 @@ import os
 
 fn main() {
 	mut reading_output := false
-	mut output := '.'
+	mut output := 'appsettings.local.json'
 
 	env_vars := os.environ()
 
@@ -12,24 +12,36 @@ fn main() {
 	mut vars := map[string]string{}
 
 	for arg in os.args {
+		if arg == '--vars' {
+			reading_vars = true
+			reading_output = false
+			continue
+		} else if arg == '--output' {
+			reading_output = true
+			reading_vars = false
+			continue
+		}
+
 		if reading_vars {
 			val := env_vars[arg] or {
-				"Tried to find environment variable '${arg}', but no such variable was found"
+				error("Tried to find environment variable '${arg}', but no such variable was found")
+				continue
 			}
 			vars[arg] = val
 		} else if reading_output {
 			output = arg
 		}
-
-		if arg == '--vars' {
-			reading_vars = true
-		} else if arg == '--output' {
-			reading_output = true
-		}
 	}
 
 	println('Writing to ${output}: ${vars}')
-	os.write_file(output, "$vars") or {
-		'Could not write file to ${output}'
+
+	parts := output.split(os.path_separator)
+	dir := parts[0..parts.len - 1].join(os.path_separator)
+
+	if dir != "" && !os.exists(dir) {
+		os.mkdir(dir)!
 	}
+	os.write_file(output, '${vars}')!
+
+	println('Application executed successfully')
 }
