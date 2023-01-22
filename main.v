@@ -33,15 +33,52 @@ fn main() {
 		}
 	}
 
-	println('Writing to ${output}: ${vars}')
-
 	parts := output.split(os.path_separator)
 	dir := parts[0..parts.len - 1].join(os.path_separator)
 
-	if dir != "" && !os.exists(dir) {
+	if dir != '' && !os.exists(dir) {
 		os.mkdir(dir)!
 	}
-	os.write_file(output, '${vars}')!
+
+	mut res := '{'
+	mut parents := []string{}
+	for key, value in vars {
+		key_parts := key.split('__')
+
+		// Ascend if necessary
+		mut ascended := false
+		for {
+			if key_parts.len <= parents.len {
+				parents.pop()
+				ascended = true
+			} else {
+				break
+			}
+		}
+
+		// Descend if necessary
+		mut descended := false
+		for part in key_parts {
+			if key_parts.len - 1 > parents.len {
+				parents << part
+				res += '\n' + '\t'.repeat(parents.len) + '"${part}": {'
+				descended = true
+			} else {
+				break
+			}
+		}
+
+		if !descended && !ascended {
+			res += ','
+		} else if ascended {
+			res += '\n' + '\t'.repeat(1 + parents.len) + '},'
+		}
+		res += '\n' + '\t'.repeat(1 + parents.len) + '"${key_parts.last()}": "${value}"'
+	}
+	res += '\n}'
+
+	println('Writing to ${output}:\n${res}')
+	os.write_file(output, res)!
 
 	println('Application executed successfully')
 }

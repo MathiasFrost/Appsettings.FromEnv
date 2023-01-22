@@ -9,5 +9,11 @@ fn test_should_generate_appsettings() {
 
 	os.execute('bin\\main.exe --vars Identity__ClientId Identity__ClientSecret ConnectionString --output out\\appsettings.local.json')
 	content := os.read_file('out\\appsettings.local.json')!
-	assert content == "{'Identity__ClientId': 'my_secret_client_id', 'Identity__ClientSecret': '1234567890', 'ConnectionString': '69310+498120394809'}"
+	assert content == '{
+	"Identity": {
+		"ClientId": "my_secret_client_id",
+		"ClientSecret": "1234567890"
+	},
+	"ConnectionString": "69310+498120394809"
+}'
 }
