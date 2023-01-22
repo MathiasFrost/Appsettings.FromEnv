@@ -7,7 +7,7 @@ fn test_should_generate_appsettings() {
 	os.setenv('Identity__ClientSecret', '1234567890', true)
 	os.setenv('ConnectionString', '69310+498120394809', true)
 
-	os.execute('bin\\main.exe --vars Identity__ClientId Identity__ClientSecret ConnectionString --output out\\appsettings.local.json')
+	os.execute('bin\\main.exe --vars Identity__ClientId Identity__ClientSecret ConnectionString --output out\\appsettings.local.json --file null')
 	content := os.read_file('out\\appsettings.local.json')!
 	assert content == '{
 	"Identity": {
@@ -15,5 +15,6 @@ fn test_should_generate_appsettings() {
 		"ClientSecret": "1234567890"
 	},
 	"ConnectionString": "69310+498120394809"
-}'
+}'.replace('\n',
+		'\r\n') // Not sure how to handle different newlines
 }
