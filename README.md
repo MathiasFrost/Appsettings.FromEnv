@@ -1,6 +1,6 @@
 # Appsettings.FromEnv - _V_
 
-App to turn environment variables into a appsettings.json file
+App to turn environment variables into an appsettings.json file
 
 ## Use case
 
@@ -13,7 +13,7 @@ This app turns the environment variables you supply to the automated build and t
 
 ### Supplied environment variables
 
-```shell
+```text
 ConnectionString=mariadb://root:1234@localhost:3306/my_schema
 OpenId__ClientId=my_secret_client_id
 OpenId__ClientSecret=1234567890
