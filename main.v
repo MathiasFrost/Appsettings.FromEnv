@@ -101,14 +101,23 @@ Parameter          Description                                                  
 		}
 
 		// Descend if necessary
+		mut array := false
 		mut descended := false
-		for part in key_parts {
+		for i, part in key_parts {
+			if array {
+				array = false
+			}
 			if key_parts.len - 1 > parents.len {
 				parents << part
 				if !first && !descended {
 					res += ','
 				}
-				res += '\r\n' + '\t'.repeat(parents.len) + '"${part}": {'
+				if i + 1 < key_parts.len && regex.regex_opt('^\\d+$')?.matches_string(key_parts[i + 1]) {
+					res += '\r\n' + '\t'.repeat(parents.len) + '"${part}": ['
+					array = true
+				} else {
+					res += '\r\n' + '\t'.repeat(parents.len) + '"${part}": {'
+				}
 				descended = true
 			} else {
 				break
