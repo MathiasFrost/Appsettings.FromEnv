@@ -80,7 +80,10 @@ Parameter          Description                                                  
 	mut first := true
 	mut re := regex.regex_opt('__')? // Correct regex is '(?<=\w)(__|:)(?=\w)', but V does not support this
 	for key, value in vars {
-		key_parts := re.split(key)
+		key_parts := re.split(key).filter(it.trim_space() != '')
+		if key_parts.len == 0 {
+			continue
+		}
 
 		// Ascend if necessary
 		mut ascended := false
@@ -88,6 +91,10 @@ Parameter          Description                                                  
 			if key_parts.len <= parents.len {
 				parents.pop()
 				ascended = true
+			} else if key_parts.len > 0 && parents.len > 0
+				&& key_parts[parents.len - 1] != parents.last() {
+				parents.pop()
+				res += '\n' + '\t'.repeat(parents.len + 1) + '}'
 			} else {
 				break
 			}
@@ -98,7 +105,7 @@ Parameter          Description                                                  
 		for part in key_parts {
 			if key_parts.len - 1 > parents.len {
 				parents << part
-				if !first {
+				if !first && !descended {
 					res += ','
 				}
 				res += '\r\n' + '\t'.repeat(parents.len) + '"${part}": {'

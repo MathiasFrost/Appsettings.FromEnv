@@ -1,2 +1,11 @@
 WPF_ENVIRONMENT
 PNPM_HOME
+Identity__ClientId
+Identity__ClientSecret
+AFB__Fileshare__APIKey
+AFB__Fileshare__Sub
+AFB__Something
+APIKeys__0__APIKey
+APIKeys__0__Sub
+APIKeys__1__APIKey
+APIKeys__1__Sub
