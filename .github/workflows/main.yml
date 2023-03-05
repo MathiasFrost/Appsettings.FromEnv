@@ -13,6 +13,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Create Release
+        if: github.ref_name == 'main'
         id: create_release
         uses: actions/create-release@v1
         env:
