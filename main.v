@@ -90,7 +90,7 @@ Parameter          Description                                                  
 		for {
 			if key_parts.len <= parents.len {
 				parents.pop()
-				ascended = true
+				res += '\n' + '\t'.repeat(parents.len + 1) + '}'
 			} else if key_parts.len > 0 && parents.len > 0
 				&& key_parts[parents.len - 1] != parents.last() {
 				parents.pop()
@@ -103,6 +103,9 @@ Parameter          Description                                                  
 		// Descend if necessary
 		mut descended := false
 		for part in key_parts {
+			if key_parts.index(part) < parents.len {
+				continue
+			}
 			if key_parts.len - 1 > parents.len {
 				parents << part
 				if !first && !descended {
