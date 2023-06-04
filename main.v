@@ -2,6 +2,7 @@ module main
 
 import os
 import regex
+import math
 
 enum Parameter {
 	pending
@@ -75,36 +76,62 @@ Parameter          Description                                                  
 		os.mkdir(dir)!
 	}
 
-	mut res := ''
-	mut written := []string{}
-	mut re := regex.regex_opt(r'(__)|(:)')?
+	vars["Logging__LogLevel__Default"] = "Information"
+	vars["Logging__LogLevel__Test"] = "Warning"
+	vars["SmtpUrl"] = "test"
+
+	mut res := '{'
+	mut written2 := []string{}
+	mut re := regex.regex_opt(r'(__)|(:)')!
 	mut base := ''
 	for key, value in vars {
 		key_parts := re.split(key).filter(it.trim_space() != '')
 		for i, part in key_parts {
-			base += part
-			if base in written {
-			} else {
-				res += '{\n' + '\t'.repeat(i + 1) + '"${part}": '
-			}
-			if i == key_parts.len - 1 {
-				res += '"${value}"'
-			}
-			written << base
-		}
+			base += part + "__"
 
-		for i, _ in key_parts {
-			if i == 0 {
-				continue
-			}
-			res += '\n' + '\t'.repeat(key_parts.len - i) + '}'
-		}
+			curr_parts := base.split('__')
+			prev_parts := if written2.len > 0 { written2[written2.len - 1].split('__') } else { []string{} }
 
+			max := math.max(curr_parts.len, prev_parts.len) - 1
+			mut diff := 0
+			for j in 0..max {
+				if j < curr_parts.len - 1 && j < prev_parts.len - 1 && curr_parts[j] == prev_parts[j] {
+					diff += 0
+				} else if curr_parts.len < prev_parts.len {
+					diff += 1
+				} else {
+					diff -= 1
+				}
+			}
+
+			if written2.len > 0 {
+				// println("Prev: ${written2[written2.len - 1]}\nCurr: ${base}\nDiff: ${diff}\n")
+			}
+			if diff > 0 { // Ascend
+				for j in 0..diff {
+					res += '\n' + '\t'.repeat(diff - j) + '}'
+				}
+			} else if diff < 0 { // Descend
+				res += '\n' + '\t'.repeat(i + 1) + '"${part}": '
+				written2 << base
+			} else { // Same level
+				res += ','
+			}
+
+			if i == key_parts.len - 1 { // Write value of env var at last level
+				if value == "null" {
+					res += 'null'
+				} else {
+					res += '"${value}"'
+				}
+			} else { // More objects to write
+				res += '{'
+			}
+		}
 		base = ''
 	}
 
-	println(res + '\n}')
-
+	res = res.substr(0, res.len - 1) + "\n}"
 	println('Writing to ${output}:\n${res}')
 	os.write_file(output, res.replace('\\', '\\\\'))!
 

@@ -1,2 +1,5 @@
 PhysicalPath
 AFB__Fileshare__APIKey
+Logging__LogLevel__Default
+Logging__LogLevel__Test
+SmtpUrl
