@@ -2,7 +2,6 @@ module main
 
 import os
 import regex
-import math
 
 enum Parameter {
 	pending
@@ -80,55 +79,43 @@ Parameter          Description                                                  
 	vars["Logging__LogLevel__Test"] = "Warning"
 	vars["SmtpUrl"] = "test"
 
-	mut res := '{'
-	mut written2 := []string{}
 	mut re := regex.regex_opt(r'(__)|(:)')!
-	mut base := ''
+	mut res := '{'
+	mut prev_parts := []string{}
+	mut i := 0
 	for key, value in vars {
-		key_parts := re.split(key).filter(it.trim_space() != '')
-		for i, part in key_parts {
-			base += part + "__"
+		if i != 0 { res += ',' } // All values are separated by ',' (except first)
+		curr_parts := re.split(key).filter(it.trim_space() != '')
 
-			curr_parts := base.split('__')
-			prev_parts := if written2.len > 0 { written2[written2.len - 1].split('__') } else { []string{} }
-
-			max := math.max(curr_parts.len, prev_parts.len) - 1
-			mut diff := 0
-			for j in 0..max {
-				if j < curr_parts.len - 1 && j < prev_parts.len - 1 && curr_parts[j] == prev_parts[j] {
-					diff += 0
-				} else if curr_parts.len < prev_parts.len {
-					diff += 1
-				} else {
-					diff -= 1
-				}
+		// Descend if multiple parts
+		for j, part in curr_parts {
+			if j < prev_parts.len - 1 && part == prev_parts[j] {
+				continue
 			}
-
-			if written2.len > 0 {
-				// println("Prev: ${written2[written2.len - 1]}\nCurr: ${base}\nDiff: ${diff}\n")
-			}
-			if diff > 0 { // Ascend
-				for j in 0..diff {
-					res += '\n' + '\t'.repeat(diff - j) + '}'
-				}
-			} else if diff < 0 { // Descend
-				res += '\n' + '\t'.repeat(i + 1) + '"${part}": '
-				written2 << base
-			} else { // Same level
-				res += ','
-			}
-
-			if i == key_parts.len - 1 { // Write value of env var at last level
-				if value == "null" {
-					res += 'null'
-				} else {
-					res += '"${value}"'
-				}
-			} else { // More objects to write
+			res += '\n' + '\t'.repeat(j + 1) + '"${part}": '
+			if j < curr_parts.len - 1 {
 				res += '{'
 			}
 		}
-		base = ''
+
+		// All values are written once
+		if value == 'null' {
+			res += 'null'
+		} else {
+			res += '"${value}"'
+		}
+
+		// Ascend if next is not the same
+		next_parts := if i + 1 < vars.len - 1 { re.split(vars.keys()[i + 1]).filter(it.trim_space() != '') } else { []string{} }
+		for j in 1..curr_parts.len {
+			k := curr_parts.len - j - 1
+			if k > next_parts.len - 1 || curr_parts[k] != next_parts[k] {
+				res += '\n' + '\t'.repeat(k + 1) + '}'
+			}
+		}
+
+		prev_parts = curr_parts.clone()		
+		i += 1
 	}
 
 	res = res.substr(0, res.len - 1) + "\n}"
