@@ -24,7 +24,7 @@ fn main() {
 			println('Appsettings.FromEnv
 
 Parameter          Description                                                                      Example                                          Default
---vars             Specify environment variables to search for.                                     fromenv --vars ConnectionString ClientSecret     
+--vars             Specify environment variables to search for.                                     fromenv --vars ConnectionString ClientSecret
 --file             Specify file containing new-line-separated environment variables to search for.  fromenv --file ../.fromenvrc                     ${rc_path}
 --output           Specify output file.                                                             fromenv --output out/appsettings.local.json      ${output}
 --all              If we should parse ALL environment variables that exists.                        fromenv --all                                    ${parse_all}
@@ -75,69 +75,35 @@ Parameter          Description                                                  
 		os.mkdir(dir)!
 	}
 
-	mut res := '{'
-	mut parents := []string{}
-	mut first := true
-	mut re := regex.regex_opt('__')? // Correct regex is '(?<=\w)(__|:)(?=\w)', but V does not support this
+	mut res := ''
+	mut written := []string{}
+	mut re := regex.regex_opt(r'(__)|(:)')?
+	mut base := ''
 	for key, value in vars {
 		key_parts := re.split(key).filter(it.trim_space() != '')
-		if key_parts.len == 0 {
-			continue
-		}
-
-		// Ascend if necessary
-		mut ascended := false
-		for {
-			if key_parts.len <= parents.len {
-				parents.pop()
-				res += '\n' + '\t'.repeat(parents.len + 1) + '}'
-			} else if key_parts.len > 0 && parents.len > 0
-				&& key_parts[parents.len - 1] != parents.last() {
-				parents.pop()
-				res += '\n' + '\t'.repeat(parents.len + 1) + '}'
+		for i, part in key_parts {
+			base += part
+			if base in written {
 			} else {
-				break
+				res += '{\n' + '\t'.repeat(i + 1) + '"${part}": '
 			}
+			if i == key_parts.len - 1 {
+				res += '"${value}"'
+			}
+			written << base
 		}
 
-		// Descend if necessary
-		mut descended := false
-		for part in key_parts {
-			if key_parts.index(part) < parents.len {
+		for i, _ in key_parts {
+			if i == 0 {
 				continue
 			}
-			if key_parts.len - 1 > parents.len {
-				parents << part
-				if !first && !descended {
-					res += ','
-				}
-				res += '\r\n' + '\t'.repeat(parents.len) + '"${part}": {'
-				descended = true
-			} else {
-				break
-			}
+			res += '\n' + '\t'.repeat(key_parts.len - i) + '}'
 		}
 
-		if !descended && !ascended && !first {
-			res += ','
-		} else if ascended {
-			res += '\r\n' + '\t'.repeat(1 + parents.len) + '},'
-		}
-
-		val := if value == 'null' { 'null' } else { '"${value}"' }
-		res += '\r\n' + '\t'.repeat(1 + parents.len) + '"${key_parts.last()}": ${val}'
-		first = false
+		base = ''
 	}
 
-	// Ascend to 0
-	for {
-		res += '\r\n' + '\t'.repeat(parents.len) + '}'
-		if parents.len > 0 {
-			parents.pop()
-		} else {
-			break
-		}
-	}
+	println(res + '\n}')
 
 	println('Writing to ${output}:\n${res}')
 	os.write_file(output, res.replace('\\', '\\\\'))!
