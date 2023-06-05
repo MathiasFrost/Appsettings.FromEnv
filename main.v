@@ -80,9 +80,11 @@ Parameter          Description                                                  
 
 	vars["Logging__LogLevel__Default"] = "Information"
 	vars["Logging__LogLevel__Test"] = "Warning"
-	vars["SmtpUrl"] = "test"
+	vars["SmtpUrl"] = "2"
+	vars["Identity__ClientId"] = "true"
 
 	mut re := regex.regex_opt(r'(__)|(:)')!
+	mut num_re := regex.regex_opt(r'^\d+$')!
 	mut res := '{'
 	mut prev_parts := []string{}
 	mut i := 0
@@ -104,8 +106,8 @@ Parameter          Description                                                  
 		}
 
 		// All values are written once
-		if value == 'null' {
-			res += 'null'
+		if value in ['null', 'false', 'true'] || num_re.matches_string(value) {
+			res += value
 		} else {
 			res += '"${value}"'
 		}
