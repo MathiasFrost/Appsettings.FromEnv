@@ -64,7 +64,10 @@ Parameter          Description                                                  
 	if os.exists(rc_path) {
 		rc_vars := os.read_file(rc_path)!.replace('\r\n', '\n').split('\n')
 		for var in rc_vars {
-			vars[var] = env_vars[var] or { 'null' }
+			if var.trim_space() == "" {
+				continue
+			}
+			vars[var.trim_space()] = env_vars[var] or { 'null' }
 		}
 	}
 
@@ -88,10 +91,12 @@ Parameter          Description                                                  
 		curr_parts := re.split(key).filter(it.trim_space() != '')
 
 		// Descend if multiple parts
+		mut diff_parent := false
 		for j, part in curr_parts {
-			if j < prev_parts.len - 1 && part == prev_parts[j] {
+			if !diff_parent && j < prev_parts.len - 1 && part == prev_parts[j] {
 				continue
 			}
+			diff_parent = true
 			res += '\n' + '\t'.repeat(j + 1) + '"${part}": '
 			if j < curr_parts.len - 1 {
 				res += '{'
@@ -106,19 +111,23 @@ Parameter          Description                                                  
 		}
 
 		// Ascend if next is not the same
-		next_parts := if i + 1 < vars.len - 1 { re.split(vars.keys()[i + 1]).filter(it.trim_space() != '') } else { []string{} }
-		for j in 1..curr_parts.len {
-			k := curr_parts.len - j - 1
-			if k > next_parts.len - 1 || curr_parts[k] != next_parts[k] {
-				res += '\n' + '\t'.repeat(k + 1) + '}'
+		diff_parent = false
+		next_parts := if i < vars.len - 1 { re.split(vars.keys()[i + 1]).filter(it.trim_space() != '') } else { []string{} }
+		mut level := curr_parts.len - 1 
+		for j in 0..(curr_parts.len - 1) {
+			if !diff_parent && j < next_parts.len - 1 && curr_parts[j] == next_parts[j] {
+				continue
 			}
+			diff_parent = true
+			res += '\n' + '\t'.repeat(level) + '}'
+			level -= 1
 		}
 
 		prev_parts = curr_parts.clone()		
 		i += 1
 	}
 
-	res = res.substr(0, res.len - 1) + "\n}"
+	res += "\n}"
 	println('Writing to ${output}:\n${res}')
 	os.write_file(output, res.replace('\\', '\\\\'))!
 
