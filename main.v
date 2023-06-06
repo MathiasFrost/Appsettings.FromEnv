@@ -62,7 +62,8 @@ Parameter          Description                                                  
 
 	// Parse .fromenvrc
 	if os.exists(rc_path) {
-		rc_vars := os.read_file(rc_path)!.replace('\r\n', '\n').split('\n')
+		mut rc_vars := os.read_file(rc_path)!.replace('\r\n', '\n').split('\n')
+		rc_vars.sort()
 		for var in rc_vars {
 			if var.trim_space() == "" {
 				continue
