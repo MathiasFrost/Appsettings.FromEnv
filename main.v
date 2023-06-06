@@ -94,14 +94,32 @@ Parameter          Description                                                  
 
 		// Descend if multiple parts
 		mut diff_parent := false
+		mut last_was_array := false
 		for j, part in curr_parts {
 			if !diff_parent && j < prev_parts.len - 1 && part == prev_parts[j] {
+				if j + 1 < curr_parts.len && num_re.matches_string(curr_parts[j + 1]) {
+					last_was_array = true
+				} else if last_was_array {
+					last_was_array = false
+				}
 				continue
 			}
 			diff_parent = true
-			res += '\n' + '\t'.repeat(j + 1) + '"${part}": '
-			if j < curr_parts.len - 1 {
-				res += '{'
+			res += '\n' + '\t'.repeat(j + 1)
+			if last_was_array {
+				last_was_array = false
+				if j < curr_parts.len - 1 {
+					res += '{'
+				}
+				continue
+			} else if j + 1 < curr_parts.len && num_re.matches_string(curr_parts[j + 1]) {
+				last_was_array = true
+				res += '"${part}": ['
+			} else {
+				res += '"${part}": '
+				if j < curr_parts.len - 1 {
+					res += '{'
+				}
 			}
 		}
 
@@ -121,7 +139,12 @@ Parameter          Description                                                  
 				continue
 			}
 			diff_parent = true
-			res += '\n' + '\t'.repeat(level) + '}'
+			res += '\n' + '\t'.repeat(level)
+			if num_re.matches_string(curr_parts[level]) {
+				res += ']'
+			} else {
+				res += '}'
+			}
 			level -= 1
 		}
 
