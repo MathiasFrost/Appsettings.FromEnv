@@ -24,7 +24,7 @@ fn main() {
 			println('Appsettings.FromEnv
 
 Parameter          Description                                                                      Example                                          Default
---vars             Specify environment variables to search for.                                     fromenv --vars ConnectionString ClientSecret     
+--vars             Specify environment variables to search for.                                     fromenv --vars ConnectionString ClientSecret
 --file             Specify file containing new-line-separated environment variables to search for.  fromenv --file ../.fromenvrc                     ${rc_path}
 --output           Specify output file.                                                             fromenv --output out/appsettings.local.json      ${output}
 --all              If we should parse ALL environment variables that exists.                        fromenv --all                                    ${parse_all}
@@ -62,9 +62,13 @@ Parameter          Description                                                  
 
 	// Parse .fromenvrc
 	if os.exists(rc_path) {
-		rc_vars := os.read_file(rc_path)!.replace('\r\n', '\n').split('\n')
+		mut rc_vars := os.read_file(rc_path)!.replace('\r\n', '\n').split('\n')
+		rc_vars.sort()
 		for var in rc_vars {
-			vars[var] = env_vars[var] or { 'null' }
+			if var.trim_space() == "" {
+				continue
+			}
+			vars[var.trim_space()] = env_vars[var] or { 'null' }
 		}
 	}
 
@@ -75,70 +79,81 @@ Parameter          Description                                                  
 		os.mkdir(dir)!
 	}
 
+	vars["Logging__LogLevel__Default"] = "Information"
+	vars["Logging__LogLevel__Test"] = "Warning"
+	vars["SmtpUrl"] = "2"
+	vars["Identity__ClientId"] = "true"
+
+	mut re := regex.regex_opt(r'(__)|(:)')!
+	mut num_re := regex.regex_opt(r'^\d+$')!
 	mut res := '{'
-	mut parents := []string{}
-	mut first := true
-	mut re := regex.regex_opt('__')? // Correct regex is '(?<=\w)(__|:)(?=\w)', but V does not support this
+	mut prev_parts := []string{}
+	mut i := 0
 	for key, value in vars {
-		key_parts := re.split(key).filter(it.trim_space() != '')
-		if key_parts.len == 0 {
-			continue
-		}
+		if i != 0 { res += ',' } // All values are separated by ',' (except first)
+		curr_parts := re.split(key).filter(it.trim_space() != '')
 
-		// Ascend if necessary
-		mut ascended := false
-		for {
-			if key_parts.len <= parents.len {
-				parents.pop()
-				res += '\n' + '\t'.repeat(parents.len + 1) + '}'
-			} else if key_parts.len > 0 && parents.len > 0
-				&& key_parts[parents.len - 1] != parents.last() {
-				parents.pop()
-				res += '\n' + '\t'.repeat(parents.len + 1) + '}'
-			} else {
-				break
-			}
-		}
-
-		// Descend if necessary
-		mut descended := false
-		for part in key_parts {
-			if key_parts.index(part) < parents.len {
+		// Descend if multiple parts
+		mut diff_parent := false
+		mut last_was_array := false
+		for j, part in curr_parts {
+			if !diff_parent && j < prev_parts.len - 1 && part == prev_parts[j] {
+				if j + 1 < curr_parts.len && num_re.matches_string(curr_parts[j + 1]) {
+					last_was_array = true
+				} else if last_was_array {
+					last_was_array = false
+				}
 				continue
 			}
-			if key_parts.len - 1 > parents.len {
-				parents << part
-				if !first && !descended {
-					res += ','
+			diff_parent = true
+			res += '\n' + '\t'.repeat(j + 1)
+			if last_was_array {
+				last_was_array = false
+				if j < curr_parts.len - 1 {
+					res += '{'
 				}
-				res += '\r\n' + '\t'.repeat(parents.len) + '"${part}": {'
-				descended = true
+				continue
+			} else if j + 1 < curr_parts.len && num_re.matches_string(curr_parts[j + 1]) {
+				last_was_array = true
+				res += '"${part}": ['
 			} else {
-				break
+				res += '"${part}": '
+				if j < curr_parts.len - 1 {
+					res += '{'
+				}
 			}
 		}
 
-		if !descended && !ascended && !first {
-			res += ','
-		} else if ascended {
-			res += '\r\n' + '\t'.repeat(1 + parents.len) + '},'
-		}
-
-		val := if value == 'null' { 'null' } else { '"${value}"' }
-		res += '\r\n' + '\t'.repeat(1 + parents.len) + '"${key_parts.last()}": ${val}'
-		first = false
-	}
-
-	// Ascend to 0
-	for {
-		res += '\r\n' + '\t'.repeat(parents.len) + '}'
-		if parents.len > 0 {
-			parents.pop()
+		// All values are written once
+		if value in ['null', 'false', 'true'] || num_re.matches_string(value) {
+			res += value
 		} else {
-			break
+			res += '"${value}"'
 		}
+
+		// Ascend if next is not the same
+		diff_parent = false
+		next_parts := if i < vars.len - 1 { re.split(vars.keys()[i + 1]).filter(it.trim_space() != '') } else { []string{} }
+		mut level := curr_parts.len - 1 
+		for j in 0..(curr_parts.len - 1) {
+			if !diff_parent && j < next_parts.len - 1 && curr_parts[j] == next_parts[j] {
+				continue
+			}
+			diff_parent = true
+			res += '\n' + '\t'.repeat(level)
+			if num_re.matches_string(curr_parts[level]) {
+				res += ']'
+			} else {
+				res += '}'
+			}
+			level -= 1
+		}
+
+		prev_parts = curr_parts.clone()		
+		i += 1
 	}
 
+	res += "\n}"
 	println('Writing to ${output}:\n${res}')
 	os.write_file(output, res.replace('\\', '\\\\'))!
 
